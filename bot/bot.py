@@ -160,27 +160,14 @@ def run_telegram_mode() -> None:
 
     @dp.message()
     async def handle_message(message: types.Message) -> None:
-        """Handle all other messages (natural language)."""
+        """Handle all other messages (natural language and keyboard buttons)."""
         text = message.text or ""
 
-        # Check for keyboard button clicks
-        if text == "📚 Available labs":
-            from handlers import handle_labs
+        # All messages go through the LLM intent router
+        # Keyboard button text is treated as natural language queries
+        from handlers.intent_router import handle_natural_language
 
-            response = handle_labs()
-        elif text == "🏥 Health check":
-            from handlers import handle_health
-
-            response = handle_health()
-        elif text == "📊 Lab scores":
-            response = "Please specify a lab, e.g., 'lab-04' or use /scores lab-04"
-        elif text == "🏆 Top learners":
-            response = "Please specify a lab, e.g., 'lab-04'"
-        else:
-            # Natural language query - use intent router
-            from handlers.intent_router import handle_natural_language
-
-            response = handle_natural_language(text)
+        response = handle_natural_language(text)
 
         await message.answer(response)
 
