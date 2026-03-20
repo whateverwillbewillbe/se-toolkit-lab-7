@@ -23,14 +23,15 @@ def handle_labs() -> str:
 
     lines = ["Available labs:"]
     for lab in labs:
-        name = lab.get("name", lab.get("id", "Unknown"))
+        # Use title if available, otherwise fall back to name/id
+        title = lab.get("title", lab.get("name", lab.get("id", "Unknown")))
         lab_id = lab.get("id", "")
         description = lab.get("description", "")
 
         # Format: "- Lab 01 — Products, Architecture & Roles"
         if description:
-            lines.append(f"- {name} — {description}")
+            lines.append(f"- {title} — {description}")
         else:
-            lines.append(f"- {name}")
+            lines.append(f"- {title}")
 
     return "\n".join(lines)
