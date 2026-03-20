@@ -3,9 +3,11 @@
 Usage:
     uv run bot.py           # Start Telegram bot
     uv run bot.py --test "/start"  # Test mode (no Telegram connection)
+    uv run bot.py --test "what labs are available"  # Natural language query
 """
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
@@ -20,6 +22,7 @@ from handlers import get_handler_for_command, handle_help, handle_start
 # Telegram imports
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart, Command
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 # Setup logging
 logging.basicConfig(
@@ -60,6 +63,16 @@ def run_test_mode(command_text: str) -> None:
     handler = get_handler_for_command(command)
 
     if handler is None:
+        # Check if this looks like a natural language query
+        if not command_text.strip().startswith("/"):
+            # Natural language query - use intent router
+            from handlers.intent_router import handle_natural_language
+
+            response = handle_natural_language(command_text)
+            print(response)
+            sys.exit(0)
+
+        # Unknown command
         print(f"Unknown command: /{command}")
         print("Use /help to see available commands.")
         sys.exit(0)  # Exit 0 for unknown commands (not a crash)
@@ -89,18 +102,33 @@ def run_telegram_mode() -> None:
     bot = Bot(token=config["BOT_TOKEN"])
     dp = Dispatcher()
 
+    # Create inline keyboard for /start
+    def get_main_keyboard() -> ReplyKeyboardMarkup:
+        """Get main keyboard with common actions."""
+        keyboard = [
+            [
+                KeyboardButton(text="📚 Available labs"),
+                KeyboardButton(text="🏥 Health check"),
+            ],
+            [
+                KeyboardButton(text="📊 Lab scores"),
+                KeyboardButton(text="🏆 Top learners"),
+            ],
+        ]
+        return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
     # Register handlers
     @dp.message(CommandStart())
     async def cmd_start(message: types.Message) -> None:
         """Handle /start command."""
         response = handle_start()
-        await message.answer(response)
+        await message.answer(response, reply_markup=get_main_keyboard())
 
     @dp.message(Command("help"))
     async def cmd_help(message: types.Message) -> None:
         """Handle /help command."""
         response = handle_help()
-        await message.answer(response)
+        await message.answer(response, reply_markup=get_main_keyboard())
 
     @dp.message(Command("health"))
     async def cmd_health(message: types.Message) -> None:
@@ -131,11 +159,30 @@ def run_telegram_mode() -> None:
         await message.answer(response)
 
     @dp.message()
-    async def echo_unknown(message: types.Message) -> None:
-        """Handle unknown commands."""
-        await message.answer(
-            "I understand these commands: /start, /help, /health, /labs, /scores"
-        )
+    async def handle_message(message: types.Message) -> None:
+        """Handle all other messages (natural language)."""
+        text = message.text or ""
+
+        # Check for keyboard button clicks
+        if text == "📚 Available labs":
+            from handlers import handle_labs
+
+            response = handle_labs()
+        elif text == "🏥 Health check":
+            from handlers import handle_health
+
+            response = handle_health()
+        elif text == "📊 Lab scores":
+            response = "Please specify a lab, e.g., 'lab-04' or use /scores lab-04"
+        elif text == "🏆 Top learners":
+            response = "Please specify a lab, e.g., 'lab-04'"
+        else:
+            # Natural language query - use intent router
+            from handlers.intent_router import handle_natural_language
+
+            response = handle_natural_language(text)
+
+        await message.answer(response)
 
     # Start polling
     logger.info("Bot is running. Press Ctrl+C to stop.")
