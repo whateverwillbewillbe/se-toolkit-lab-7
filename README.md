@@ -91,3 +91,101 @@ By the end of this lab, you should be able to say:
 2. [Backend Integration](./lab/tasks/required/task-2.md) — P0: slash commands + real data
 3. [Intent-Based Natural Language Routing](./lab/tasks/required/task-3.md) — P1: LLM tool use
 4. [Containerize and Document](./lab/tasks/required/task-4.md) — P3: containerize + deploy
+
+## Deploy
+
+### Prerequisites
+
+Before deploying, ensure you have the following environment variables set in `.env.docker.secret`:
+
+- `BOT_TOKEN` — Telegram bot token from @BotFather
+- `LMS_API_KEY` — API key for the LMS backend
+- `LLM_API_KEY` — API key for the LLM service
+- `LLM_API_MODEL` — Model name (e.g., `coder-model`)
+
+### Deploy with Docker Compose
+
+1. **Pull latest changes** on your VM:
+
+   ```bash
+   cd ~/se-toolkit-lab-7
+   git pull
+   ```
+
+2. **Stop any running bot processes** (from previous nohup deployment):
+
+   ```bash
+   pkill -f "bot.py" 2>/dev/null || true
+   ```
+
+3. **Start all services** (backend + bot):
+
+   ```bash
+   docker compose --env-file .env.docker.secret up --build -d
+   ```
+
+4. **Verify services are running**:
+
+   ```bash
+   docker compose --env-file .env.docker.secret ps
+   ```
+
+   You should see `bot`, `backend`, `postgres`, `pgadmin`, and `caddy` services.
+
+5. **Check bot logs** for errors:
+
+   ```bash
+   docker compose --env-file .env.docker.secret logs bot --tail 20
+   ```
+
+   Look for:
+   - "Starting Telegram bot..." — bot started
+   - "Bot is running" — polling started
+   - No Python tracebacks
+
+### Verify in Telegram
+
+Send these commands to your bot:
+
+- `/start` — Welcome message with keyboard buttons
+- `/health` — Backend status
+- `/labs` — List of available labs
+- `/scores lab-04` — Pass rates for lab-04
+- "what labs are available?" — Natural language query
+- "which lab has the lowest pass rate?" — Multi-step reasoning
+
+### Troubleshooting
+
+**Bot container keeps restarting:**
+
+```bash
+docker compose --env-file .env.docker.secret logs bot
+```
+
+Check for missing environment variables or import errors.
+
+**/health fails but worked before:**
+
+Ensure `LMS_API_URL=http://backend:8000` in the bot service (not `localhost:42002`). Inside Docker, `localhost` refers to the container itself.
+
+**LLM queries fail:**
+
+Ensure `LLM_API_BASE_URL` uses `host.docker.internal:42005/v1`. The Qwen proxy is on a different Docker network.
+
+**BOT_TOKEN error:**
+
+Add `BOT_TOKEN=your-token` to `.env.docker.secret` and restart:
+
+```bash
+docker compose --env-file .env.docker.secret up -d --force-recreate bot
+```
+
+### Update Deployment
+
+To deploy new changes:
+
+```bash
+cd ~/se-toolkit-lab-7
+git pull
+docker compose --env-file .env.docker.secret up --build -d
+```

@@ -2,14 +2,15 @@
 
 import json
 import sys
+from typing import Any
 from config import load_config
 from services.llm_client import create_llm_client, LLMClient
 from services.lms_client import create_lms_client, LMSClient
 
 
 # System prompt for the LLM
-SYSTEM_PROMPT = """You are a helpful assistant for a Learning Management System (LMS). 
-You have access to tools that fetch data from the backend API. 
+SYSTEM_PROMPT = """You are a helpful assistant for a Learning Management System (LMS).
+You have access to tools that fetch data from the backend API.
 
 When a user asks a question:
 1. Analyze what information they need
@@ -27,31 +28,13 @@ Available tools:
 - get_completion_rate: Completion percentage for a lab
 - trigger_sync: Refresh data from autochecker
 
-For questions about specific labs, extract the lab name (e.g., "lab 4" → "lab-04").
+User may click keyboard buttons like "📚 Available labs" or "🏥 Health check" — treat these as requests for that information.
+For questions about specific labs, the tool parameters will include the lab identifier.
 For multi-step questions (e.g., "which lab has lowest pass rate"), call tools for each lab and compare.
 
 If the user's message is a greeting or unclear, respond naturally without calling tools.
 If you don't have enough information, ask for clarification.
 """
-
-
-def extract_lab_name(text: str) -> str:
-    """Extract lab name from user text.
-
-    Args:
-        text: User message text
-
-    Returns:
-        Normalized lab name (e.g., "lab-04") or empty string.
-    """
-    import re
-
-    # Match patterns like "lab 4", "lab-4", "lab04", "lab-04"
-    match = re.search(r"lab[- ]?(\d+)", text, re.IGNORECASE)
-    if match:
-        num = int(match.group(1))
-        return f"lab-{num:02d}"
-    return ""
 
 
 def execute_tool(tool_name: str, arguments: dict, lms_client: LMSClient) -> Any:
@@ -259,11 +242,5 @@ def handle_natural_language(message: str) -> str:
     Returns:
         Response text.
     """
-    # Check for simple greetings first (no LLM needed)
-    lower_message = message.lower().strip()
-
-    if lower_message in ["hi", "hello", "hey", "привет", "здравствуйте"]:
-        return "Hello! I'm your LMS assistant. I can help you with:\n- Checking available labs\n- Viewing scores and pass rates\n- Finding top learners\n- And more!\n\nJust ask me a question like 'what labs are available?' or 'show me scores for lab 4'."
-
-    # Use LLM router for everything else
+    # Use LLM router for all messages
     return route(message)
