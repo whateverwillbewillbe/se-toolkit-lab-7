@@ -5,11 +5,13 @@ They don't know about Telegram - same logic works from --test mode,
 unit tests, or Telegram.
 """
 
-from .start import handle_start
-from .help import handle_help
-from .health import handle_health
-from .labs import handle_labs
-from .scores import handle_scores
+from .commands import (
+    handle_start,
+    handle_help,
+    handle_health,
+    handle_labs,
+    handle_scores,
+)
 
 __all__ = [
     "handle_start",
@@ -23,10 +25,10 @@ __all__ = [
 
 def get_handler_for_command(command: str):
     """Get the handler function for a command.
-    
+
     Args:
         command: Command name without slash (e.g., "start", "help")
-    
+
     Returns:
         Handler function or None if command not found.
     """
