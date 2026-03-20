@@ -15,7 +15,7 @@ bot_dir = Path(__file__).parent
 sys.path.insert(0, str(bot_dir))
 
 from config import load_config
-from handlers import get_handler_for_command, handle_help
+from handlers import get_handler_for_command, handle_help, handle_start
 
 # Telegram imports
 from aiogram import Bot, Dispatcher, types
